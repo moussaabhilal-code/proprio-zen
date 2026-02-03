@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useParams } from "next/navigation";
 import { 
   Wifi, Key, Check, Copy, MessageSquare, 
-  AlertTriangle, Send, MapPin, BookOpen, 
-  Utensils, Building2, ChevronRight, PhoneCall, Trash2, Map
+  AlertTriangle, MapPin, BookOpen, 
+  Utensils, Building2, ChevronRight, PhoneCall, Trash2, 
+  Menu, X, Coffee, ShoppingCart, Pill, Bus, Camera, Paperclip
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -26,17 +27,31 @@ export default function TenantPage() {
   const [copiedWifi, setCopiedWifi] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [showTicketForm, setShowTicketForm] = useState(false); // باش نخبيو الفورمولير
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false); // 🍔 Sidebar State
 
   // Ticket Form State
   const [ticketMsg, setTicketMsg] = useState("");
+  const [ticketCategory, setTicketCategory] = useState("maintenance"); // 🆕 Category
   const [ticketSent, setTicketSent] = useState(false);
   const [sendingTicket, setSendingTicket] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null); // 🆕 For Photo
+
+  // ♻️ SMART TRASH LOGIC
+  const getNextCollection = () => {
+    // هاد اللوجيك بسيط: إيلا كان نهار الزوج (Mardi, Jeudi...) كيدير Recyclage
+    // فالواقع خاصك تجيبها من الداتابيز، ولكن هادي Demo ذكية
+    const day = new Date().getDay(); 
+    const isRecycleWeek = day % 2 === 0; 
+    return isRecycleWeek 
+      ? { type: "Recyclage", icon: "♻️", color: "text-green-600", bg: "bg-green-50", border: "border-green-100" }
+      : { type: "Déchets", icon: "⚫", color: "text-gray-700", bg: "bg-gray-100", border: "border-gray-200" };
+  };
+  const trashInfo = getNextCollection();
 
   useEffect(() => {
     async function fetchUnit() {
       if (!params.id) return;
-      // كنجيبو حتى العنوان (address) من properties
       const { data, error } = await supabase
         .from("units")
         .select("*, properties(*)")
@@ -66,24 +81,19 @@ export default function TenantPage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  const openMap = () => {
-    if (unit?.properties?.address) {
-        // كيدي لـ Google Maps بالعنوان
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(unit.properties.address)}`, '_blank');
-    }
-  };
-
   const submitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticketMsg.trim()) return;
     setSendingTicket(true);
 
+    // هنا خاص نورمالمون نرفعو التصويرة لـ Storage عاد نسجلو الرابط
+    // حالياً غاندوزو غير الميساج والكاتيغوري
     const { error } = await supabase.from("tickets").insert([{
       unit_id: unit.id,
       property_id: unit.property_id,
       description: ticketMsg,
+      category: ticketCategory, // 🆕 Saving Category
       status: 'pending',
-      category: 'general',
       created_at: new Date()
     }]);
 
@@ -93,7 +103,7 @@ export default function TenantPage() {
       setTicketMsg("");
       setTimeout(() => {
           setTicketSent(false);
-          setShowTicketForm(false); // نسدو الفورمولير من بعد الارسال
+          setShowTicketForm(false);
       }, 3000);
     } else {
       alert("Erreur: " + error.message);
@@ -104,13 +114,41 @@ export default function TenantPage() {
   if (!unit) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 bg-gray-100">Unité introuvable.</div>;
 
   return (
-    // 🎨 LAYOUT FIX: Centered Container like a Mobile App
-    // هاد الخلفية الرمادية والـ Box فالوسط هو اللي غايحل مشكل الفراغ
-    <div className="min-h-screen bg-[#eef2f6] flex justify-center sm:py-8 font-sans">
+    <div className="min-h-screen bg-[#eef2f6] flex justify-center sm:py-8 font-sans overflow-x-hidden">
       
+      {/* 🍔 SIDEBAR MENU OVERLAY */}
+      <div className={`fixed inset-0 z-50 transform transition-transform duration-300 ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
+         <div className="absolute inset-0 bg-black/50" onClick={() => setShowSidebar(false)}></div>
+         <div className="absolute right-0 h-full w-3/4 max-w-xs bg-white shadow-2xl p-6 flex flex-col">
+            <div className="flex justify-between items-center mb-8">
+               <h2 className="text-xl font-black text-gray-800">Quartier</h2>
+               <button onClick={() => setShowSidebar(false)} className="p-2 bg-gray-100 rounded-full"><X size={20}/></button>
+            </div>
+            
+            <div className="space-y-4 overflow-y-auto">
+               <div className="bg-orange-50 p-4 rounded-xl flex items-center gap-4">
+                  <div className="bg-white p-2 rounded-lg text-orange-600 shadow-sm"><Coffee size={20}/></div>
+                  <div><p className="font-bold text-gray-800">Café du Coin</p><p className="text-xs text-gray-500">2 min à pied</p></div>
+               </div>
+               <div className="bg-green-50 p-4 rounded-xl flex items-center gap-4">
+                  <div className="bg-white p-2 rounded-lg text-green-600 shadow-sm"><ShoppingCart size={20}/></div>
+                  <div><p className="font-bold text-gray-800">Supermarché</p><p className="text-xs text-gray-500">Ouvert jsq 22h</p></div>
+               </div>
+               <div className="bg-blue-50 p-4 rounded-xl flex items-center gap-4">
+                  <div className="bg-white p-2 rounded-lg text-blue-600 shadow-sm"><Pill size={20}/></div>
+                  <div><p className="font-bold text-gray-800">Pharmacie</p><p className="text-xs text-gray-500">Jean Coutu</p></div>
+               </div>
+               <div className="bg-gray-50 p-4 rounded-xl flex items-center gap-4">
+                  <div className="bg-white p-2 rounded-lg text-gray-600 shadow-sm"><Bus size={20}/></div>
+                  <div><p className="font-bold text-gray-800">Arrêt 45</p><p className="text-xs text-gray-500">Vers Métro</p></div>
+               </div>
+            </div>
+         </div>
+      </div>
+
       <div className="w-full max-w-[420px] bg-white sm:rounded-[35px] shadow-2xl overflow-hidden min-h-screen sm:min-h-0 relative flex flex-col">
         
-        {/* 1️⃣ HEADER: REAL PHOTO & WELCOME */}
+        {/* 1️⃣ HEADER */}
         <div className="relative h-72">
            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10"></div>
            <img 
@@ -128,40 +166,35 @@ export default function TenantPage() {
                     <p className="text-white font-bold text-lg">{unit.properties?.property_name}</p>
                     <p className="text-gray-300 text-sm flex items-center gap-1">Unité {unit.unit_number}</p>
                   </div>
-                  {/* 📍 زر الخريطة */}
-                  <button onClick={openMap} className="bg-white/20 hover:bg-white/30 backdrop-blur-md p-2.5 rounded-full text-white border border-white/30 transition shadow-lg active:scale-90">
-                      <Map size={20} />
+                  {/* 🍔 MENU HAMBURGER */}
+                  <button onClick={() => setShowSidebar(true)} className="bg-white text-black p-3 rounded-full hover:bg-gray-200 transition shadow-lg active:scale-90">
+                      <Menu size={20} />
                   </button>
               </div>
            </div>
         </div>
 
-        {/* CONTENT SCROLLABLE */}
+        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto bg-[#F8FAFC] rounded-t-[30px] -mt-6 relative z-30 px-5 pt-8 pb-8 space-y-6">
 
-          {/* 2️⃣ ACCESS CARDS (WIFI & DOOR) */}
+          {/* 2️⃣ WIFI & CODE */}
           <div className="space-y-3">
-              {/* WIFI - Enhanced with Network Name */}
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-3 opacity-5"><Wifi size={80}/></div>
                 <div className="flex items-start gap-4 relative z-10">
                     <div className="bg-blue-50 p-3 rounded-xl text-blue-600 shrink-0"><Wifi size={24}/></div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Réseau Wi-Fi (SSID)</p>
-                        {/* Placeholder Name if not in DB, assume generic */}
-                        <p className="font-bold text-gray-800 truncate mb-2">{unit.properties?.property_name}_Wifi</p> 
-                        
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Réseau Wi-Fi</p>
+                        <p className="font-bold text-gray-800 truncate mb-2">{unit.properties?.property_name}_Guest</p> 
                         <div className="flex items-center justify-between bg-gray-50 rounded-lg p-2 pr-3">
                             <code className="text-lg font-black text-gray-800 font-mono truncate mr-2">{unit.wifi_password || "Open"}</code>
                             <button onClick={() => handleCopy(unit.wifi_password, 'wifi')} className="text-blue-600 hover:text-blue-700 p-1">
-                                {copiedWifi ? <Check size={18}/> : <Copy size={18}/>}
+                                {copiedWifi ? <Check size={18} className="text-green-500"/> : <Copy size={18}/>}
                             </button>
                         </div>
                     </div>
                 </div>
               </div>
 
-              {/* DOOR CODE */}
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="bg-orange-50 p-3 rounded-xl text-orange-600"><Key size={24}/></div>
@@ -176,36 +209,33 @@ export default function TenantPage() {
               </div>
           </div>
 
-          {/* 3️⃣ WIDGET POUBELLES (NEW) 🗑️ */}
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-4">
-              <div className="bg-white p-2.5 rounded-full shadow-sm text-emerald-600">
-                  <Trash2 size={20} />
+          {/* 3️⃣ SMART TRASH LOGIC ♻️ */}
+          <div className={`p-4 rounded-2xl flex items-center gap-4 border ${trashInfo.bg} ${trashInfo.border}`}>
+              <div className="bg-white p-2.5 rounded-full shadow-sm text-lg">
+                  {trashInfo.icon}
               </div>
               <div>
-                  <p className="text-xs text-emerald-800 font-bold uppercase">Prochaine Collecte</p>
-                  <p className="text-sm font-bold text-gray-700">Demain : Recyclage ♻️</p>
+                  <p className={`text-xs font-bold uppercase ${trashInfo.color}`}>Prochaine Collecte</p>
+                  <p className="text-sm font-bold text-gray-700">Demain : {trashInfo.type}</p>
               </div>
           </div>
 
-          {/* 4️⃣ ACTION BUTTONS GRID */}
+          {/* 4️⃣ ACTION BUTTONS */}
           <div className="grid grid-cols-2 gap-3">
                <button className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center gap-2 hover:bg-gray-50 transition active:scale-95">
                   <div className="bg-indigo-50 p-3 rounded-xl text-indigo-600"><BookOpen size={20}/></div>
                   <span className="font-bold text-gray-700 text-xs">Guide Maison</span>
                </button>
-               <button className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center gap-2 hover:bg-gray-50 transition active:scale-95">
+               <button onClick={() => setShowSidebar(true)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center gap-2 hover:bg-gray-50 transition active:scale-95">
                   <div className="bg-pink-50 p-3 rounded-xl text-pink-600"><Utensils size={20}/></div>
                   <span className="font-bold text-gray-700 text-xs">Quartier</span>
                </button>
           </div>
 
-          {/* 5️⃣ ASSISTANCE (ACCORDION STYLE - خبينا الفورمولير) */}
+          {/* 5️⃣ ADVANCED TICKET FORM 🎫 */}
           <div className="pt-2">
              {!showTicketForm ? (
-                 <button 
-                    onClick={() => setShowTicketForm(true)}
-                    className="w-full bg-gray-900 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between group active:scale-[0.98] transition"
-                 >
+                 <button onClick={() => setShowTicketForm(true)} className="w-full bg-gray-900 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between group active:scale-[0.98] transition">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/20 p-2 rounded-lg"><MessageSquare size={18}/></div>
                         <div className="text-left">
@@ -217,26 +247,49 @@ export default function TenantPage() {
                  </button>
              ) : (
                  <div className="bg-white p-5 rounded-2xl shadow-md border border-gray-100 animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex justify-between items-center mb-3">
+                    <div className="flex justify-between items-center mb-4">
                         <h3 className="font-black text-gray-800">Nouveau Ticket</h3>
                         <button onClick={() => setShowTicketForm(false)} className="text-xs font-bold text-red-500">Annuler</button>
                     </div>
+                    
                     {ticketSent ? (
-                       <div className="text-center py-6 bg-green-50 rounded-xl">
-                           <Check size={32} className="text-green-600 mx-auto mb-2"/>
-                           <p className="font-bold text-green-800 text-sm">Message Envoyé !</p>
+                       <div className="text-center py-8 bg-green-50 rounded-xl">
+                           <Check size={40} className="text-green-600 mx-auto mb-3"/>
+                           <p className="font-bold text-green-800">Message Envoyé !</p>
+                           <p className="text-xs text-green-600 mt-1">L'équipe technique a été notifiée.</p>
                        </div>
                     ) : (
-                       <form onSubmit={submitTicket}>
+                       <form onSubmit={submitTicket} className="space-y-3">
+                          {/* 🆕 DROPDOWN CATEGORY */}
+                          <select 
+                             value={ticketCategory} 
+                             onChange={(e) => setTicketCategory(e.target.value)}
+                             className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-black"
+                          >
+                             <option value="maintenance">🛠️ Maintenance Générale</option>
+                             <option value="plomberie">💧 Plomberie</option>
+                             <option value="electricite">⚡ Électricité</option>
+                             <option value="chauffage">🌡️ Chauffage / Clim</option>
+                             <option value="bruit">🔊 Bruit / Voisinage</option>
+                          </select>
+
                           <textarea 
-                             autoFocus
-                             className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-black focus:outline-none h-24 mb-3 resize-none"
-                             placeholder="Décrivez le problème ici..."
+                             className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-black focus:outline-none h-24 resize-none"
+                             placeholder="Décrivez le problème en détail..."
                              value={ticketMsg}
                              onChange={e => setTicketMsg(e.target.value)}
                           ></textarea>
-                          <button disabled={sendingTicket || !ticketMsg.trim()} className="w-full bg-black text-white font-bold py-3 rounded-xl text-sm flex justify-center items-center gap-2 hover:bg-gray-800">
-                             {sendingTicket ? "Envoi..." : <><Send size={14}/> Envoyer le signalement</>}
+
+                          {/* 🆕 PHOTO BUTTON (Visual Only for now) */}
+                          <div className="flex items-center gap-2">
+                              <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-200">
+                                  <Camera size={16}/> Ajouter une photo
+                              </button>
+                              <input type="file" ref={fileInputRef} hidden accept="image/*" />
+                          </div>
+
+                          <button disabled={sendingTicket || !ticketMsg.trim()} className="w-full bg-black text-white font-bold py-3 rounded-xl text-sm flex justify-center items-center gap-2 hover:bg-gray-800 transition shadow-lg">
+                             {sendingTicket ? "Envoi..." : <>Envoyer le signalement <div className="bg-white/20 p-1 rounded-full"><ChevronRight size={12}/></div></>}
                           </button>
                        </form>
                     )}
@@ -244,14 +297,14 @@ export default function TenantPage() {
              )}
           </div>
 
-          {/* 6️⃣ EMERGENCY FOOTER (SPLIT - فرقناهم) 🆘 */}
+          {/* 6️⃣ EMERGENCY FOOTER (High Contrast) 🆘 */}
           <div className="grid grid-cols-2 gap-3 pt-2 pb-6">
-             <a href="tel:+15550000000" className="flex flex-col items-center justify-center gap-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-xs border border-gray-200 hover:bg-gray-200 transition">
-                <PhoneCall size={16}/> 
+             <a href="tel:+15550000000" className="flex flex-col items-center justify-center gap-1 bg-gray-200 text-gray-800 py-4 rounded-xl font-bold text-xs border border-gray-300 hover:bg-gray-300 transition active:scale-95">
+                <PhoneCall size={18}/> 
                 <span>Manager</span>
              </a>
-             <a href="tel:911" className="flex flex-col items-center justify-center gap-1 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-xs border border-red-100 hover:bg-red-100 transition">
-                <AlertTriangle size={16}/> 
+             <a href="tel:911" className="flex flex-col items-center justify-center gap-1 bg-red-100 text-red-700 py-4 rounded-xl font-bold text-xs border border-red-200 hover:bg-red-200 transition active:scale-95">
+                <AlertTriangle size={18}/> 
                 <span>Urgence 911</span>
              </a>
           </div>
@@ -259,9 +312,9 @@ export default function TenantPage() {
         </div>
 
         {/* TOAST NOTIFICATION */}
-        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/90 backdrop-blur text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 pointer-events-none z-50 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <Check size={16} className="text-green-400"/>
-            <span className="text-xs font-bold">Copié !</span>
+        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 pointer-events-none z-50 ${showToast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-90'}`}>
+            <div className="bg-green-500 rounded-full p-1"><Check size={12}/></div>
+            <span className="text-xs font-bold">Copié dans le presse-papier</span>
         </div>
 
       </div>
