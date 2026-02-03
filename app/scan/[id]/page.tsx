@@ -6,7 +6,7 @@ import {
   Wifi, Key, Check, Copy, MessageSquare, 
   AlertTriangle, BookOpen, Utensils, 
   ChevronRight, PhoneCall, Trash2, Menu, X, 
-  Coffee, ShoppingCart, Pill, Bus, Camera, Youtube, PlayCircle
+  Coffee, ShoppingCart, Pill, Bus, Camera, Youtube, PlayCircle, MapPin, AtSign
 } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,17 +25,18 @@ export default function TenantPage() {
   const [showToast, setShowToast] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showVideos, setShowVideos] = useState(false); // 🆕 Youtube Modal
+  const [showVideos, setShowVideos] = useState(false);
 
   // Ticket Form
   const [ticketMsg, setTicketMsg] = useState("");
+  const [ticketEmail, setTicketEmail] = useState(""); // 🆕 Email State
   const [ticketCategory, setTicketCategory] = useState("maintenance");
   const [ticketSent, setTicketSent] = useState(false);
   const [sendingTicket, setSendingTicket] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // 🆕 File State
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ♻️ LOGIC ZBEL (Hardcoded مؤقتاً)
+  // ♻️ LOGIC ZBEL (Hardcoded Demo)
   const getNextCollection = () => {
     const day = new Date().getDay(); 
     const isRecycleWeek = day % 2 === 0; 
@@ -45,19 +46,26 @@ export default function TenantPage() {
   };
   const trashInfo = getNextCollection();
 
-  // 📺 VIDEOS DATA (Youtube Links)
+  // 📺 VIDEOS (Gratuit - Youtube Links)
+  // تقدر تبدل الروابط هنا بأي فيديو بغيتي
   const videoGuides = [
-     { title: "Changer une ampoule", url: "https://www.youtube.com/watch?v=xyz", duration: "2 min" },
-     { title: "Déboucher l'évier", url: "https://www.youtube.com/watch?v=abc", duration: "5 min" },
-     { title: "Reset du Chauffage", url: "https://www.youtube.com/watch?v=123", duration: "1 min" },
+     { title: "Changer une ampoule", url: "https://www.youtube.com/watch?v=R0_yKzJ2dsw", duration: "2 min" },
+     { title: "Déboucher l'évier", url: "https://www.youtube.com/watch?v=2iF_yL7vQSA", duration: "5 min" },
+     { title: "Reset du Disjoncteur", url: "https://www.youtube.com/watch?v=M5G5vJ9k", duration: "1 min" },
   ];
 
-  // 📍 SIDEBAR DATA (Mock Data - No API Cost)
-  const localSpots = [
-     { name: "Café du Coin", type: "Café", icon: <Coffee size={18}/>, desc: "2 min à pied" },
-     { name: "Supermarché Metro", type: "Courses", icon: <ShoppingCart size={18}/>, desc: "Ouvert jsq 22h" },
-     { name: "Pharmacie Jean Coutu", type: "Santé", icon: <Pill size={18}/>, desc: "Service de garde" },
-     { name: "Arrêt Bus 45", type: "Transport", icon: <Bus size={18}/>, desc: "Vers Métro" },
+  // 📍 SIDEBAR DATA (Gratuit - Hardcoded)
+  const quartierSpots = [
+     { name: "Café du Coin", desc: "2 min à pied", icon: <Coffee size={18}/> },
+     { name: "Supermarché Metro", desc: "Ouvert jsq 22h", icon: <ShoppingCart size={18}/> },
+     { name: "Pharmacie Jean Coutu", desc: "Service de garde", icon: <Pill size={18}/> },
+     { name: "Arrêt Bus 45", desc: "Vers Métro", icon: <Bus size={18}/> },
+  ];
+
+  const touristSpots = [
+     { name: "Vieux-Port", desc: "Activités & Vue", icon: <MapPin size={18}/> },
+     { name: "Mont-Royal", desc: "Randonnée & Nature", icon: <MapPin size={18}/> },
+     { name: "Centre-Ville", desc: "Shopping (Eaton)", icon: <MapPin size={18}/> },
   ];
 
   useEffect(() => {
@@ -81,7 +89,6 @@ export default function TenantPage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  // 📸 UPLOAD FUNCTION
   const uploadImage = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
@@ -94,7 +101,7 @@ export default function TenantPage() {
 
   const submitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticketMsg.trim()) return;
+    if (!ticketMsg.trim() || !ticketEmail.trim()) return; // Validation
     setSendingTicket(true);
 
     try {
@@ -105,10 +112,11 @@ export default function TenantPage() {
 
       const { error } = await supabase.from("tickets").insert([{
         unit_id: unit.id,
-        property_id: unit.property_id, // ⚠️ خاصك تكون زدتي هاد العمود ف Supabase
+        property_id: unit.property_id,
         description: ticketMsg,
+        email: ticketEmail, // 🆕 Saving Email
         category: ticketCategory,
-        photo_url: imageUrl, // ⚠️ خاصك تكون زدتي هاد العمود (text) ف Supabase
+        photo_url: imageUrl,
         status: 'pending',
         created_at: new Date()
       }]);
@@ -117,6 +125,7 @@ export default function TenantPage() {
 
       setTicketSent(true);
       setTicketMsg("");
+      setTicketEmail("");
       setSelectedFile(null);
       setTimeout(() => { setTicketSent(false); setShowTicketForm(false); }, 3000);
 
@@ -133,21 +142,39 @@ export default function TenantPage() {
   return (
     <div className="min-h-screen bg-[#eef2f6] flex justify-center sm:py-8 font-sans overflow-x-hidden">
       
-      {/* 🍔 SIDEBAR (Static Data - No API Cost) */}
+      {/* 🍔 SIDEBAR (Updated with Tourist Spots) */}
       <div className={`fixed inset-0 z-50 transform transition-transform duration-300 ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
          <div className="absolute inset-0 bg-black/50" onClick={() => setShowSidebar(false)}></div>
-         <div className="absolute right-0 h-full w-3/4 max-w-xs bg-white shadow-2xl p-6 flex flex-col">
-            <div className="flex justify-between items-center mb-8">
-               <h2 className="text-xl font-black text-gray-800">Quartier</h2>
+         <div className="absolute right-0 h-full w-4/5 max-w-xs bg-white shadow-2xl p-6 flex flex-col overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+               <h2 className="text-xl font-black text-gray-800">Guide Local</h2>
                <button onClick={() => setShowSidebar(false)} className="p-2 bg-gray-100 rounded-full"><X size={20}/></button>
             </div>
-            <div className="space-y-4">
-               {localSpots.map((spot, i) => (
-                 <div key={i} className="bg-gray-50 p-4 rounded-xl flex items-center gap-4 hover:bg-gray-100 transition">
-                    <div className="bg-white p-2 rounded-lg text-black shadow-sm">{spot.icon}</div>
-                    <div><p className="font-bold text-gray-800">{spot.name}</p><p className="text-xs text-gray-500">{spot.desc}</p></div>
-                 </div>
-               ))}
+            
+            {/* 🏙️ Quartier */}
+            <div className="mb-6">
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">À Proximité</h3>
+                <div className="space-y-3">
+                   {quartierSpots.map((spot, i) => (
+                     <div key={i} className="bg-gray-50 p-3 rounded-xl flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-lg text-black shadow-sm">{spot.icon}</div>
+                        <div><p className="font-bold text-sm text-gray-800">{spot.name}</p><p className="text-[10px] text-gray-500">{spot.desc}</p></div>
+                     </div>
+                   ))}
+                </div>
+            </div>
+
+            {/* 🗽 Tourist Spots (NEW) */}
+            <div>
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">À Visiter</h3>
+                <div className="space-y-3">
+                   {touristSpots.map((spot, i) => (
+                     <div key={i} className="bg-indigo-50 p-3 rounded-xl flex items-center gap-3 border border-indigo-100">
+                        <div className="bg-white p-2 rounded-lg text-indigo-600 shadow-sm">{spot.icon}</div>
+                        <div><p className="font-bold text-sm text-gray-800">{spot.name}</p><p className="text-[10px] text-gray-500">{spot.desc}</p></div>
+                     </div>
+                   ))}
+                </div>
             </div>
          </div>
       </div>
@@ -163,7 +190,7 @@ export default function TenantPage() {
               </div>
               <div className="space-y-3">
                  {videoGuides.map((vid, i) => (
-                    <a key={i} href={vid.url} target="_blank" className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition">
+                    <a key={i} href={vid.url} target="_blank" className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition border border-gray-100">
                        <PlayCircle size={32} className="text-red-600"/>
                        <div><p className="font-bold text-sm text-gray-800">{vid.title}</p><p className="text-xs text-gray-500">{vid.duration}</p></div>
                     </a>
@@ -192,7 +219,7 @@ export default function TenantPage() {
 
         <div className="flex-1 overflow-y-auto bg-[#F8FAFC] rounded-t-[30px] -mt-6 relative z-30 px-5 pt-8 pb-8 space-y-6">
 
-          {/* WIFI & CODE (Keep same as before) */}
+          {/* WIFI & CODE */}
           <div className="space-y-3">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4">
                   <div className="bg-blue-50 p-3 rounded-xl text-blue-600 shrink-0"><Wifi size={24}/></div>
@@ -214,25 +241,25 @@ export default function TenantPage() {
               </div>
           </div>
 
-          {/* TRASH WIDGET */}
+          {/* TRASH */}
           <div className={`p-4 rounded-2xl flex items-center gap-4 border ${trashInfo.bg} ${trashInfo.border}`}>
               <div className="bg-white p-2.5 rounded-full shadow-sm text-lg">{trashInfo.icon}</div>
               <div><p className={`text-xs font-bold uppercase ${trashInfo.color}`}>Prochaine Collecte</p><p className="text-sm font-bold text-gray-700">Demain : {trashInfo.type}</p></div>
           </div>
 
-          {/* ACTION GRID (With Video Guide) */}
+          {/* ACTIONS */}
           <div className="grid grid-cols-2 gap-3">
                <button onClick={() => setShowVideos(true)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center gap-2 hover:bg-gray-50 active:scale-95">
                   <div className="bg-red-50 p-3 rounded-xl text-red-600"><Youtube size={20}/></div>
                   <span className="font-bold text-gray-700 text-xs">Vidéos Dépanage</span>
                </button>
                <button onClick={() => setShowSidebar(true)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center gap-2 hover:bg-gray-50 active:scale-95">
-                  <div className="bg-pink-50 p-3 rounded-xl text-pink-600"><Utensils size={20}/></div>
-                  <span className="font-bold text-gray-700 text-xs">Guide Quartier</span>
+                  <div className="bg-indigo-50 p-3 rounded-xl text-indigo-600"><MapPin size={20}/></div>
+                  <span className="font-bold text-gray-700 text-xs">Guide Local</span>
                </button>
           </div>
 
-          {/* TICKET FORM (With Photo Upload) */}
+          {/* TICKET FORM (With Email & Photo) */}
           <div className="pt-2">
              {!showTicketForm ? (
                  <button onClick={() => setShowTicketForm(true)} className="w-full bg-gray-900 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between group active:scale-[0.98]">
@@ -246,12 +273,18 @@ export default function TenantPage() {
                        <div className="text-center py-8 bg-green-50 rounded-xl"><Check size={40} className="text-green-600 mx-auto mb-3"/><p className="font-bold text-green-800">Envoyé !</p></div>
                     ) : (
                        <form onSubmit={submitTicket} className="space-y-3">
+                          
+                          {/* 📧 EMAIL INPUT (NEW) */}
+                          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-3">
+                             <AtSign size={16} className="text-gray-400"/>
+                             <input type="email" placeholder="Votre email (pour la réponse)" required value={ticketEmail} onChange={e => setTicketEmail(e.target.value)} className="bg-transparent w-full text-sm font-bold text-gray-800 outline-none placeholder:font-normal" />
+                          </div>
+
                           <select value={ticketCategory} onChange={(e) => setTicketCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-700 outline-none">
                              <option value="maintenance">🛠️ Maintenance</option><option value="plomberie">💧 Plomberie</option><option value="electricite">⚡ Électricité</option>
                           </select>
                           <textarea className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-black outline-none h-24 resize-none" placeholder="Décrivez le problème..." value={ticketMsg} onChange={e => setTicketMsg(e.target.value)}></textarea>
                           
-                          {/* 📸 PHOTO INPUT */}
                           <div className="flex items-center gap-2">
                               <button type="button" onClick={() => fileInputRef.current?.click()} className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border ${selectedFile ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                   <Camera size={16}/> {selectedFile ? "Photo ajoutée !" : "Ajouter une photo"}
