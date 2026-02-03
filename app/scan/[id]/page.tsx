@@ -68,6 +68,7 @@ export default function TenantPage() {
 
   const openMap = () => {
     if (unit?.properties?.address) {
+        // كيدي لـ Google Maps بالعنوان
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(unit.properties.address)}`, '_blank');
     }
   };
@@ -104,6 +105,7 @@ export default function TenantPage() {
 
   return (
     // 🎨 LAYOUT FIX: Centered Container like a Mobile App
+    // هاد الخلفية الرمادية والـ Box فالوسط هو اللي غايحل مشكل الفراغ
     <div className="min-h-screen bg-[#eef2f6] flex justify-center sm:py-8 font-sans">
       
       <div className="w-full max-w-[420px] bg-white sm:rounded-[35px] shadow-2xl overflow-hidden min-h-screen sm:min-h-0 relative flex flex-col">
@@ -127,7 +129,7 @@ export default function TenantPage() {
                     <p className="text-gray-300 text-sm flex items-center gap-1">Unité {unit.unit_number}</p>
                   </div>
                   {/* 📍 زر الخريطة */}
-                  <button onClick={openMap} className="bg-white/20 hover:bg-white/30 backdrop-blur-md p-2.5 rounded-full text-white border border-white/30 transition">
+                  <button onClick={openMap} className="bg-white/20 hover:bg-white/30 backdrop-blur-md p-2.5 rounded-full text-white border border-white/30 transition shadow-lg active:scale-90">
                       <Map size={20} />
                   </button>
               </div>
@@ -145,12 +147,13 @@ export default function TenantPage() {
                 <div className="flex items-start gap-4 relative z-10">
                     <div className="bg-blue-50 p-3 rounded-xl text-blue-600 shrink-0"><Wifi size={24}/></div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Réseau Wi-Fi</p>
-                        <p className="font-bold text-gray-800 truncate">{unit.properties?.property_name}_Guest</p> {/* Placeholder Name */}
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Réseau Wi-Fi (SSID)</p>
+                        {/* Placeholder Name if not in DB, assume generic */}
+                        <p className="font-bold text-gray-800 truncate mb-2">{unit.properties?.property_name}_Wifi</p> 
                         
-                        <div className="mt-3 flex items-center justify-between bg-gray-50 rounded-lg p-2 pr-3">
+                        <div className="flex items-center justify-between bg-gray-50 rounded-lg p-2 pr-3">
                             <code className="text-lg font-black text-gray-800 font-mono truncate mr-2">{unit.wifi_password || "Open"}</code>
-                            <button onClick={() => handleCopy(unit.wifi_password, 'wifi')} className="text-blue-600 hover:text-blue-700">
+                            <button onClick={() => handleCopy(unit.wifi_password, 'wifi')} className="text-blue-600 hover:text-blue-700 p-1">
                                 {copiedWifi ? <Check size={18}/> : <Copy size={18}/>}
                             </button>
                         </div>
@@ -180,7 +183,7 @@ export default function TenantPage() {
               </div>
               <div>
                   <p className="text-xs text-emerald-800 font-bold uppercase">Prochaine Collecte</p>
-                  <p className="text-sm font-bold text-gray-700">Mardi (Recyclage ♻️)</p>
+                  <p className="text-sm font-bold text-gray-700">Demain : Recyclage ♻️</p>
               </div>
           </div>
 
@@ -196,7 +199,7 @@ export default function TenantPage() {
                </button>
           </div>
 
-          {/* 5️⃣ ASSISTANCE (ACCORDION STYLE) */}
+          {/* 5️⃣ ASSISTANCE (ACCORDION STYLE - خبينا الفورمولير) */}
           <div className="pt-2">
              {!showTicketForm ? (
                  <button 
@@ -241,13 +244,13 @@ export default function TenantPage() {
              )}
           </div>
 
-          {/* 6️⃣ EMERGENCY FOOTER (SPLIT) 🆘 */}
+          {/* 6️⃣ EMERGENCY FOOTER (SPLIT - فرقناهم) 🆘 */}
           <div className="grid grid-cols-2 gap-3 pt-2 pb-6">
-             <a href="tel:+15550000000" className="flex flex-col items-center justify-center gap-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-xs border border-gray-200 hover:bg-gray-200">
+             <a href="tel:+15550000000" className="flex flex-col items-center justify-center gap-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-xs border border-gray-200 hover:bg-gray-200 transition">
                 <PhoneCall size={16}/> 
                 <span>Manager</span>
              </a>
-             <a href="tel:911" className="flex flex-col items-center justify-center gap-1 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-xs border border-red-100 hover:bg-red-100">
+             <a href="tel:911" className="flex flex-col items-center justify-center gap-1 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-xs border border-red-100 hover:bg-red-100 transition">
                 <AlertTriangle size={16}/> 
                 <span>Urgence 911</span>
              </a>
@@ -258,7 +261,7 @@ export default function TenantPage() {
         {/* TOAST NOTIFICATION */}
         <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/90 backdrop-blur text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 pointer-events-none z-50 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <Check size={16} className="text-green-400"/>
-            <span className="text-xs font-bold">Copié dans le presse-papier</span>
+            <span className="text-xs font-bold">Copié !</span>
         </div>
 
       </div>
