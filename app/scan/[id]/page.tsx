@@ -29,7 +29,7 @@ export default function TenantPage() {
 
   // Ticket Form
   const [ticketMsg, setTicketMsg] = useState("");
-  const [ticketEmail, setTicketEmail] = useState(""); // 🆕 Email State
+  const [ticketEmail, setTicketEmail] = useState(""); 
   const [ticketCategory, setTicketCategory] = useState("maintenance");
   const [ticketSent, setTicketSent] = useState(false);
   const [sendingTicket, setSendingTicket] = useState(false);
@@ -46,15 +46,14 @@ export default function TenantPage() {
   };
   const trashInfo = getNextCollection();
 
-  // 📺 VIDEOS (Gratuit - Youtube Links)
-  // تقدر تبدل الروابط هنا بأي فيديو بغيتي
+  // 📺 VIDEOS
   const videoGuides = [
      { title: "Changer une ampoule", url: "https://www.youtube.com/watch?v=R0_yKzJ2dsw", duration: "2 min" },
      { title: "Déboucher l'évier", url: "https://www.youtube.com/watch?v=2iF_yL7vQSA", duration: "5 min" },
      { title: "Reset du Disjoncteur", url: "https://www.youtube.com/watch?v=M5G5vJ9k", duration: "1 min" },
   ];
 
-  // 📍 SIDEBAR DATA (Gratuit - Hardcoded)
+  // 📍 SIDEBAR DATA
   const quartierSpots = [
      { name: "Café du Coin", desc: "2 min à pied", icon: <Coffee size={18}/> },
      { name: "Supermarché Metro", desc: "Ouvert jsq 22h", icon: <ShoppingCart size={18}/> },
@@ -101,7 +100,7 @@ export default function TenantPage() {
 
   const submitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticketMsg.trim() || !ticketEmail.trim()) return; // Validation
+    if (!ticketMsg.trim() || !ticketEmail.trim()) return; 
     setSendingTicket(true);
 
     try {
@@ -110,11 +109,12 @@ export default function TenantPage() {
          imageUrl = await uploadImage(selectedFile);
       }
 
+      // 1. Save to Supabase
       const { error } = await supabase.from("tickets").insert([{
         unit_id: unit.id,
         property_id: unit.property_id,
         description: ticketMsg,
-        email: ticketEmail, // 🆕 Saving Email
+        email: ticketEmail,
         category: ticketCategory,
         photo_url: imageUrl,
         status: 'pending',
@@ -123,6 +123,21 @@ export default function TenantPage() {
 
       if (error) throw error;
 
+      // ✅ 2. Send Email Notification (هذا هو السطر اللي كان خاص)
+      await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: ticketCategory,
+          message: ticketMsg,
+          email: ticketEmail,
+          photo_url: imageUrl,
+          unitNumber: unit.unit_number,
+          propertyName: unit.properties?.property_name,
+        }),
+      });
+
+      // 3. Success UI
       setTicketSent(true);
       setTicketMsg("");
       setTicketEmail("");
@@ -142,7 +157,7 @@ export default function TenantPage() {
   return (
     <div className="min-h-screen bg-[#eef2f6] flex justify-center sm:py-8 font-sans overflow-x-hidden">
       
-      {/* 🍔 SIDEBAR (Updated with Tourist Spots) */}
+      {/* 🍔 SIDEBAR */}
       <div className={`fixed inset-0 z-50 transform transition-transform duration-300 ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
          <div className="absolute inset-0 bg-black/50" onClick={() => setShowSidebar(false)}></div>
          <div className="absolute right-0 h-full w-4/5 max-w-xs bg-white shadow-2xl p-6 flex flex-col overflow-y-auto">
@@ -164,7 +179,7 @@ export default function TenantPage() {
                 </div>
             </div>
 
-            {/* 🗽 Tourist Spots (NEW) */}
+            {/* 🗽 Tourist Spots */}
             <div>
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">À Visiter</h3>
                 <div className="space-y-3">
@@ -259,7 +274,7 @@ export default function TenantPage() {
                </button>
           </div>
 
-          {/* TICKET FORM (With Email & Photo) */}
+          {/* TICKET FORM */}
           <div className="pt-2">
              {!showTicketForm ? (
                  <button onClick={() => setShowTicketForm(true)} className="w-full bg-gray-900 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between group active:scale-[0.98]">
@@ -274,7 +289,7 @@ export default function TenantPage() {
                     ) : (
                        <form onSubmit={submitTicket} className="space-y-3">
                           
-                          {/* 📧 EMAIL INPUT (NEW) */}
+                          {/* 📧 EMAIL INPUT */}
                           <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-3">
                              <AtSign size={16} className="text-gray-400"/>
                              <input type="email" placeholder="Votre email (pour la réponse)" required value={ticketEmail} onChange={e => setTicketEmail(e.target.value)} className="bg-transparent w-full text-sm font-bold text-gray-800 outline-none placeholder:font-normal" />
