@@ -4,15 +4,19 @@ import { createClient } from "@supabase/supabase-js";
 import { useParams } from "next/navigation";
 import { 
   Wifi, Key, Check, Copy, MessageSquare, 
-  AlertTriangle, BookOpen, Utensils, 
-  ChevronRight, PhoneCall, Trash2, Menu, X, 
+  AlertTriangle, ChevronRight, PhoneCall, Menu, X, 
   Coffee, ShoppingCart, Pill, Bus, Camera, Youtube, PlayCircle, MapPin, AtSign
 } from "lucide-react";
 
+// --- Configuration Supabase ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-if (!supabaseUrl || !supabaseKey) throw new Error("Supabase Keys Missing");
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// حماية باش ما يوقفش السيت إلا كانوا السوارت ناقصين
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Erreur: Les clés Supabase sont manquantes dans .env.local");
+}
+const supabase = createClient(supabaseUrl || "", supabaseKey || "");
 
 export default function TenantPage() {
   const params = useParams();
@@ -27,7 +31,7 @@ export default function TenantPage() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showVideos, setShowVideos] = useState(false);
 
-  // Ticket Form
+  // Ticket Form States
   const [ticketMsg, setTicketMsg] = useState("");
   const [ticketEmail, setTicketEmail] = useState(""); 
   const [ticketCategory, setTicketCategory] = useState("maintenance");
@@ -36,7 +40,7 @@ export default function TenantPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ♻️ LOGIC ZBEL (Hardcoded Demo)
+  // ♻️ Logic Poubelle (Hardcoded Demo)
   const getNextCollection = () => {
     const day = new Date().getDay(); 
     const isRecycleWeek = day % 2 === 0; 
@@ -46,14 +50,14 @@ export default function TenantPage() {
   };
   const trashInfo = getNextCollection();
 
-  // 📺 VIDEOS
+  // 📺 Videos Data
   const videoGuides = [
      { title: "Changer une ampoule", url: "https://www.youtube.com/watch?v=R0_yKzJ2dsw", duration: "2 min" },
      { title: "Déboucher l'évier", url: "https://www.youtube.com/watch?v=2iF_yL7vQSA", duration: "5 min" },
      { title: "Reset du Disjoncteur", url: "https://www.youtube.com/watch?v=M5G5vJ9k", duration: "1 min" },
   ];
 
-  // 📍 SIDEBAR DATA
+  // 📍 Sidebar Data
   const quartierSpots = [
      { name: "Café du Coin", desc: "2 min à pied", icon: <Coffee size={18}/> },
      { name: "Supermarché Metro", desc: "Ouvert jsq 22h", icon: <ShoppingCart size={18}/> },
@@ -67,50 +71,79 @@ export default function TenantPage() {
      { name: "Centre-Ville", desc: "Shopping (Eaton)", icon: <MapPin size={18}/> },
   ];
 
+  // 1. Fetch Unit Data
   useEffect(() => {
     async function fetchUnit() {
       if (!params.id) return;
-      const { data, error } = await supabase.from("units").select("*, properties(*)").eq("qr_code_id", params.id).single();
-      if (error) console.error(error);
-      setUnit(data);
+      // نجبدو المعلومات ديال الشقة والملك (Property)
+      const { data, error } = await supabase
+        .from("units")
+        .select("*, properties(*)")
+        .eq("qr_code_id", params.id)
+        .single();
+      
+      if (error) {
+        console.error("Erreur Fetch Unit:", error);
+      } else {
+        setUnit(data);
+      }
       setLoading(false);
     }
     fetchUnit();
   }, [params.id]);
 
+  // 2. Handle Copy to Clipboard
   const handleCopy = (text: string, type: 'wifi' | 'code') => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+    
     if (type === 'wifi') setCopiedWifi(true); else setCopiedCode(true);
     setShowToast(true);
+    
     setTimeout(() => { if (type === 'wifi') setCopiedWifi(false); else setCopiedCode(false); }, 2000);
     setTimeout(() => setShowToast(false), 3000);
   };
 
+  // 3. Upload Image Function
   const uploadImage = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
+    
     const { error: uploadError } = await supabase.storage.from('ticket-photos').upload(filePath, file);
     if (uploadError) throw uploadError;
+    
     const { data } = supabase.storage.from('ticket-photos').getPublicUrl(filePath);
     return data.publicUrl;
   };
 
+  // 🚀 4. SUBMIT TICKET (المهمة جداً)
   const submitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticketMsg.trim() || !ticketEmail.trim()) return; 
+    
+    // Validation
+    if (!ticketMsg.trim() || !ticketEmail.trim()) {
+      alert("Veuillez remplir votre email et le message.");
+      return;
+    }
+    
     setSendingTicket(true);
 
     try {
       let imageUrl = null;
+      
+      // A. Upload Image (Optional)
       if (selectedFile) {
-         imageUrl = await uploadImage(selectedFile);
+         try {
+             imageUrl = await uploadImage(selectedFile);
+         } catch(err) {
+             console.error("Erreur Upload Image (Continué sans image):", err);
+         }
       }
 
-      // 1. Save to Supabase
-      const { error } = await supabase.from("tickets").insert([{
+      // B. Save to Supabase (Database)
+      const { error: dbError } = await supabase.from("tickets").insert([{
         unit_id: unit.id,
         property_id: unit.property_id,
         description: ticketMsg,
@@ -121,38 +154,49 @@ export default function TenantPage() {
         created_at: new Date()
       }]);
 
-      if (error) throw error;
+      if (dbError) throw dbError;
 
-      // ✅ 2. Send Email Notification (هذا هو السطر اللي كان خاص)
-      await fetch("/api/send-email", {
+      // C. Send Email (via API Route)
+      // كنعيطو لـ Route اللي قادينا بـ Nodemailer
+      const emailResponse = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: ticketCategory,
           message: ticketMsg,
-          email: ticketEmail,
-          photo_url: imageUrl,
+          email: ticketEmail, // الإيميل ديال الكاري (باش نديرو ليه Reply)
           unitNumber: unit.unit_number,
-          propertyName: unit.properties?.property_name,
+          propertyName: unit.properties?.property_name || "Immeuble",
+          photo_url: imageUrl,
         }),
       });
 
-      // 3. Success UI
+      if (!emailResponse.ok) {
+        console.error("Erreur Envoi Email:", await emailResponse.text());
+        // ما كنحبسوش هنا، حيت التيكيت ديجا تسجل فالداتابيز
+      }
+
+      // D. Success & Reset
       setTicketSent(true);
       setTicketMsg("");
-      setTicketEmail("");
+      // setTicketEmail(""); // كنخليو الإيميل باش ما يعاودش يكتبو
       setSelectedFile(null);
-      setTimeout(() => { setTicketSent(false); setShowTicketForm(false); }, 3000);
+      
+      setTimeout(() => { 
+        setTicketSent(false); 
+        setShowTicketForm(false); 
+      }, 3000);
 
     } catch (error: any) {
-      alert("Erreur: " + error.message);
+      console.error("Erreur Globale:", error);
+      alert("Une erreur est survenue: " + error.message);
     } finally {
       setSendingTicket(false);
     }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 bg-gray-100">Chargement...</div>;
-  if (!unit) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 bg-gray-100">Unité introuvable.</div>;
+  if (!unit) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 bg-gray-100">Unité introuvable ou lien expiré.</div>;
 
   return (
     <div className="min-h-screen bg-[#eef2f6] flex justify-center sm:py-8 font-sans overflow-x-hidden">
