@@ -7,29 +7,31 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { type, message, email, photo_url, unitNumber, propertyName } = body;
-
-    console.log("🚀 Lancement de l'envoi d'email...");
-    console.log("🔑 API Key présente ?", !!process.env.RESEND_API_KEY);
-
-    // واش هذا هو الإيميل اللي تسجلتي بيه ف Resend؟
     const MANAGER_EMAIL = "moussaab.hilal@gmail.com"; 
 
     const { data, error } = await resend.emails.send({
       from: 'SaaS Immob <onboarding@resend.dev>',
-      to: [MANAGER_EMAIL], // في Mode Test، هذا خاصو يكون هو مول الكونط
+      to: [MANAGER_EMAIL],
       subject: `🚨 Nouveau Ticket: ${type} - Unité ${unitNumber}`,
-      html: `<p>Test Email</p>`, // ميساج قصير للتجربة
+      // ✅ التصحيح: هكا كتكتب باش Typescript ما يبكيش
+      headers: {
+        "Reply-To": email,
+      },
+      html: `
+        <div style="font-family: sans-serif; padding: 20px;">
+          <h2>Nouveau Signalement 🛠️</h2>
+          <p><strong>De:</strong> ${email}</p>
+          <p><strong>Unité:</strong> ${unitNumber}</p>
+          <hr/>
+          <p>${message}</p>
+          ${photo_url ? `<br/><img src="${photo_url}" width="300" style="border-radius:10px;"/>` : ''}
+        </div>
+      `,
     });
 
-    if (error) {
-      console.error("❌ ERREUR RESEND:", error); // هادي غاتبان ليك فالترمينال بالأحمر
-      return NextResponse.json({ error }, { status: 500 });
-    }
-
-    console.log("✅ Email envoyé avec succès:", data);
-    return NextResponse.json({ success: true, data });
+    if (error) return NextResponse.json({ error }, { status: 500 });
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("❌ ERREUR SERVEUR:", error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
