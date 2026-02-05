@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-// ✅ تأكدنا أن Download كاينة
 import { 
   LogOut, MessageSquare, Building, Eye, Wifi, Key, 
   Edit2, Save, X, QrCode, Printer, Download 
@@ -92,10 +91,21 @@ export default function AdminPage() {
     }
   };
 
+  // ✅ التصحيح هنا: كنبدلو الحالة لـ in_progress عوض solved
   const sendReply = async (ticket: any) => {
     if (!replyText) return;
-    await supabase.from("tickets").update({ admin_reply: replyText, status: 'solved' }).eq('id', ticket.id);
-    alert("✅ Réponse envoyée !");
+    
+    const { error } = await supabase.from("tickets").update({ 
+      admin_reply: replyText, 
+      status: 'in_progress'  // <--- بدلناها هنا (كانت solved)
+    }).eq('id', ticket.id);
+
+    if (error) {
+        alert("Erreur lors de l'envoi");
+        return;
+    }
+
+    alert("✅ Réponse envoyée ! Le ticket est maintenant 'En cours'.");
     setReplyText("");
     setSelectedTicket(null);
     fetchTickets();
@@ -117,7 +127,7 @@ export default function AdminPage() {
     setIsPrinting(true);
     setTimeout(() => {
       window.print();
-    }, 2500); // كنتسناو 2.5 ثانية
+    }, 2500);
   };
 
   const downloadSingleQR = async (unit: any) => {
@@ -158,7 +168,6 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#F3F4F6] font-sans">
       
       {/* 🛑 DASHBOARD WRAPPER */}
-      {/* التغيير الكبير: print:hidden كتمنع الداشبورد يبان فالطباعة نهائياً */}
       <div className={`pb-10 ${isPrinting ? "hidden" : "block"} print:hidden`}>
         
         {/* HEADER */}
@@ -211,31 +220,39 @@ export default function AdminPage() {
                  {tickets.filter(t => filter === 'all' || t.status === filter).map(ticket => (
                    <div key={ticket.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
                       <div className="flex justify-between items-start mb-3">
-                         <div className="flex items-center gap-3">
-                            <select 
-                              value={ticket.status} 
-                              onChange={(e) => updateTicketStatus(ticket.id, e.target.value)}
-                              className={`text-[10px] font-bold uppercase rounded-lg px-2 py-1.5 border-none outline-none cursor-pointer ${ticket.status === 'pending' ? 'bg-red-100 text-red-700' : ''} ${ticket.status === 'in_progress' ? 'bg-orange-100 text-orange-700' : ''} ${ticket.status === 'solved' ? 'bg-green-100 text-green-700' : ''}`}
-                            >
-                              <option value="pending">🔴 En attente</option>
-                              <option value="in_progress">🟠 En cours</option>
-                              <option value="solved">✅ Résolu</option>
-                            </select>
-                            <span className="text-sm font-bold text-gray-800">Unité {ticket.units?.unit_number}</span>
-                         </div>
-                         <span className="text-[10px] text-gray-400">{new Date(ticket.created_at).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-3">
+                             <select 
+                               value={ticket.status} 
+                               onChange={(e) => updateTicketStatus(ticket.id, e.target.value)}
+                               className={`text-[10px] font-bold uppercase rounded-lg px-2 py-1.5 border-none outline-none cursor-pointer ${ticket.status === 'pending' ? 'bg-red-100 text-red-700' : ''} ${ticket.status === 'in_progress' ? 'bg-orange-100 text-orange-700' : ''} ${ticket.status === 'solved' ? 'bg-green-100 text-green-700' : ''}`}
+                             >
+                               <option value="pending">🔴 En attente</option>
+                               <option value="in_progress">🟠 En cours</option>
+                               <option value="solved">✅ Résolu</option>
+                             </select>
+                             <span className="text-sm font-bold text-gray-800">Unité {ticket.units?.unit_number}</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400">{new Date(ticket.created_at).toLocaleDateString()}</span>
                       </div>
                       <p className="text-gray-600 text-sm bg-gray-50 p-3 rounded-lg mb-3">"{ticket.description}"</p>
+                      
+                      {/* عرض التصويرة إيلا كاينة */}
+                      {ticket.photo_url && (
+                        <div className="mb-3">
+                           <a href={ticket.photo_url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline">Voir la photo jointe 📎</a>
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center">
-                         <div className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">{ticket.category}</div>
-                         {selectedTicket === ticket.id ? (
-                            <div className="flex gap-2 w-full max-w-sm ml-4">
-                               <input className="flex-1 border rounded-lg px-3 py-1 text-sm outline-none ring-2 ring-blue-500" autoFocus placeholder="Votre réponse..." value={replyText} onChange={e => setReplyText(e.target.value)} />
-                               <button onClick={() => sendReply(ticket)} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700">Envoyer</button>
-                            </div>
-                         ) : (
-                            <button onClick={() => setSelectedTicket(ticket.id)} className="text-blue-600 text-xs font-bold flex items-center gap-1 hover:underline"><MessageSquare size={14}/> Répondre</button>
-                         )}
+                          <div className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">{ticket.category}</div>
+                          {selectedTicket === ticket.id ? (
+                             <div className="flex gap-2 w-full max-w-sm ml-4">
+                                <input className="flex-1 border rounded-lg px-3 py-1 text-sm outline-none ring-2 ring-blue-500" autoFocus placeholder="Votre réponse..." value={replyText} onChange={e => setReplyText(e.target.value)} />
+                                <button onClick={() => sendReply(ticket)} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700">Envoyer</button>
+                             </div>
+                          ) : (
+                             <button onClick={() => setSelectedTicket(ticket.id)} className="text-blue-600 text-xs font-bold flex items-center gap-1 hover:underline"><MessageSquare size={14}/> Répondre</button>
+                          )}
                       </div>
                    </div>
                  ))}
@@ -332,7 +349,6 @@ export default function AdminPage() {
       </div>
 
       {/* 🖨️ MODE IMPRESSION COLLECTIVE */}
-      {/* ⚠️ هنا القفل الصحيح: print:block كيبان فالورقة فقط، و className "block" كيخليه يبان فالشاشة ملي نكليكيو */}
       <div className={`${isPrinting ? "block" : "hidden"} print:block bg-white p-6 absolute top-0 left-0 w-full min-h-screen z-[9999]`}>
            <div className="fixed top-4 right-4 print:hidden">
               <button onClick={() => setIsPrinting(false)} className="bg-red-600 text-white px-6 py-2 rounded-full font-bold shadow-xl hover:bg-red-700 flex items-center gap-2"><X size={20}/> Fermer l'impression</button>
@@ -371,4 +387,3 @@ export default function AdminPage() {
     </div>
   );
 }
-// Vercel Deploy Test
