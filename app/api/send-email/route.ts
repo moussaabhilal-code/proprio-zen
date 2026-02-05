@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 export async function POST(request: Request) {
   try {
     // ✅ هنا فين كنعرفو Resend (لداخل)، باش يخدم غير ملي نحتاجوه
+    // هادشي كيحل مشكل "Missing API Key" فالـ Build
     const resend = new Resend(process.env.RESEND_API_KEY);
     
     const body = await request.json();
