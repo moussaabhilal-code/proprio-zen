@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ❌ حيدناها من هنا (كانت الفوق)
 
 export async function POST(request: Request) {
   try {
+    // ✅ جبناها هنا (لداخل): دابا آمنة 100%
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    
     const body = await request.json();
     const { type, message, email, photo_url, unitNumber, propertyName } = body;
     const MANAGER_EMAIL = "moussaab.hilal@gmail.com"; 
@@ -13,7 +16,6 @@ export async function POST(request: Request) {
       from: 'SaaS Immob <onboarding@resend.dev>',
       to: [MANAGER_EMAIL],
       subject: `🚨 Nouveau Ticket: ${type} - Unité ${unitNumber}`,
-      // ✅ التصحيح: هكا كتكتب باش Typescript ما يبكيش
       headers: {
         "Reply-To": email,
       },
